@@ -12,6 +12,9 @@ Parameters:
   AppBucketName:
     Type: String
     Default: prince-aws-s3-lambda
+  DynamodbTableName:
+    Type: String
+    Default: domainTable
 Resources:
   WebCrawlerStepFunction:
     Type: AWS::Serverless::StateMachine
@@ -70,6 +73,8 @@ Resources:
         Variables:
           S3BucketName:
             Ref: AppBucketName
+          DynamodbTableName:
+            Ref: DynamodbTableName
       Policies:
       - Version: '2012-10-17'
         Statement:
@@ -83,5 +88,16 @@ Resources:
           - s3:ListBucket
           Resource:
             Fn::Sub: arn:aws:s3:::${AppBucketName}
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DynamodbTableName
     Metadata:
       SamResourceId: EmailPhoneExtractor
+  DynoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Type: String
+        Name: domain
+      TableName:
+        Ref: DynamodbTableName

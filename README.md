@@ -79,4 +79,92 @@ Once deployed you can use the step function to invoke the lambda as follows
 
 ## Understanding how the lambdas works
 
-First lambda `webcrawler` uses
+### First Lambda/webcrawler 
+1. It checks if the the website has already been fetched by checking if there's a folder by that `domain` if it exists it passes control over to second lambda
+   ```javascript
+    const found = await s3.listObjectsV2({ Bucket: uploadParams.Bucket, Prefix: `${url}/`, MaxKeys: 1 }).promise()
+    if (found.Contents.length > 0) {
+      return {
+        'statusCode': 200,
+        'domain': url,
+        'body': `domain has already been fetched ${JSON.stringify(found)}`
+      }
+   ```
+
+2. First lambda `webcrawler` uses `axios` to fetch the website then it leverages `cheerio` to extract all the links in `navbar` 
+    ```js
+        const links = new Set()
+        const data = await axios.get(`https://${url}`).data
+        const $ = cheerio.load(data)
+          // using cheerio selector
+        $('nav a').each((i, e) => {
+          links.add($(e).attr('href'))
+        })
+
+        ```
+3. Now a simple for loop to fetch all the links asynchronously and write the content of them to a s3 bucket as an object with `key` as `domain`
+   ```js
+    for (let i of links) {
+      try {
+        let response = await axios.get(i).data
+        try {
+            s3data = await s3.putObject(uploadParams).promise()
+          } catch (e) {
+            return {
+              'statusCode': 400,
+              'body': JSON.stringify(e)
+            }
+          }
+        }
+      } catch (e) {
+          return {
+            'statusCode': 400,
+            'body': JSON.stringify(e)
+          }
+        } 
+    }
+    ```
+  
+### Second Lambda/EmailPhoneExtractor
+
+1. First it checks if the website has already been scanned for emails and passwords using `dynamodb` cache
+    ```js
+    try {
+      const dbResult = await db.get({
+        TableName: tableName, Key: {
+          domain: url
+        }
+      }).promise()
+      if (dbResult) {
+        return {
+          'statusCode': 200,
+          'body': `emails: ${JSON.stringify(dbResult.Item.emails)}, phones: ${JSON.stringify(dbResult.Item.phones)}`
+        }
+      }
+    } catch (e) {
+        return {
+          'statusCode': 400,
+          'body': `Problem with table ${tableName} error: ${JSON.stringify(e)}`
+        }
+    }
+    ```
+2. If the record is not found it gets all the objects from S3 Bucket using key `url`
+    ```js
+      let res = (await s3.listObjectsV2({ Bucket: process.env.S3BucketName, Prefix: `${url}/` }).promise()).Contents
+    ```
+3. Now it scan each page one by one using regex to find `email/phone`
+    ```js
+    const objectData = (await s3.getObject({ Bucket: process.env.S3BucketName, Key: r.Key }).promise()).Body.toString('utf-8')
+    let email_matches = objectData.match(emailRegex)
+    let phone_matches = objectData.match(phoneRegex)
+    ```
+4. Regex used for email
+   ```js
+   const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/g
+   ```
+5. Regex used for phone numbers
+   ```js
+   const phoneRegex = /(?<!\d)(\+ ?\d{1,2}[\s\u00A0]?)\(?\d{3}\)?[\s.-\u00A0]?\d{3}[\s.-\u00A0]?\d{4}(?!\d)/g
+   // I had to use negative look-behind (?<!\d) and negative lookahead (?!\d) to stop matching any random 10 digit occurences
+   ```
+

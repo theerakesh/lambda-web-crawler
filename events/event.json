@@ -1,1 +1,4 @@
-{ "request": { "request_id": "35", "domain": "telecine.ca" } }
+{
+  "statusCode": 200,
+  "domain": "telecine.ca"
+}

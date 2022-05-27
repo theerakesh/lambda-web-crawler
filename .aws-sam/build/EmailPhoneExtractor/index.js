@@ -1,11 +1,11 @@
 const AWS = require("aws-sdk")
-
+const db = new AWS.DynamoDB.DocumentClient()
+const tableName = process.env.DynamodbTableName
 
 AWS.config.update({
   region: 'ap-south-1'
 })
 const s3 = new AWS.S3()
-
 var uploadParams = {
   Bucket: process.env.S3BucketName,
   Body: '',
@@ -24,12 +24,29 @@ exports.handler = async (event, context) => {
   const url = event["domain"]
   let res
   try {
-    res = await (await s3.listObjectsV2({ Bucket: process.env.S3BucketName, Prefix: `${url}/` }).promise()).Contents
-    console.log(res)
+    const dbResult = await db.get({
+      TableName: tableName, Key: {
+        domain: url
+      }
+    }).promise()
+    if (Object.keys(dbResult).length > 0) {
+      return {
+        'statusCode': 200,
+        'body': `emails: ${JSON.stringify(dbResult.Item.emails)}, phones: ${JSON.stringify(dbResult.Item.phones)}`
+      }
+    }
   } catch (e) {
     return {
       'statusCode': 400,
-      'body': JSON.stringify(e)
+      'body': `Problem with table ${tableName} error: ${JSON.stringify(e)}`
+    }
+  }
+  try {
+    res = (await s3.listObjectsV2({ Bucket: process.env.S3BucketName, Prefix: `${url}/` }).promise()).Contents
+  } catch (e) {
+    return {
+      'statusCode': 400,
+      'body': `${JSON.stringify(e)}`
     }
   }
   let emails = new Set()
@@ -37,9 +54,9 @@ exports.handler = async (event, context) => {
   for (r of res) {
     try {
 
-      const objectData = await (await s3.getObject({ Bucket: process.env.S3BucketName, Key: r.Key }).promise()).Body.toString('utf-8')
+      const objectData = (await s3.getObject({ Bucket: process.env.S3BucketName, Key: r.Key }).promise()).Body.toString('utf-8')
       let email_matches = objectData.match(/\w+@\w+\.[a-z]+/g)
-      let phone_matches = objectData.match(/(?<!\d)(\+ ?\d{1,2}\s?)\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/g)
+      let phone_matches = objectData.match(/(?<!\d)(\+ ?\d{1,2}[\s\u00A0]?)\(?\d{3}\)?[\s.-\u00A0]?\d{3}[\s.-\u00A0]?\d{4}(?!\d)/g)
       if (email_matches) {
         for (let i of email_matches) {
           emails.add(i)
@@ -55,6 +72,21 @@ exports.handler = async (event, context) => {
         'statusCode': 400,
         'body': JSON.stringify(e)
       }
+    }
+  }
+  // writing to the database
+  try {
+    const res = await db.put({
+      TableName: tableName, Item: {
+        domain: url,
+        emails: [...emails],
+        phones: [...phones]
+      }
+    }).promise()
+  } catch (e) {
+    return {
+      'statusCode': 400,
+      'body': `can't write to table ${tableName} error: ${JSON.stringify(e)}`
     }
   }
   return {

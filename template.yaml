@@ -14,6 +14,9 @@ Parameters:
   AppBucketName: 
     Type: String
     Default: prince-aws-s3-lambda
+  DynamodbTableName:
+    Type: String
+    Default: domainTable
 
 Resources:
 
@@ -62,6 +65,7 @@ Resources:
       Environment:
         Variables:
           S3BucketName: !Ref AppBucketName
+          DynamodbTableName: !Ref DynamodbTableName
       Policies:
         -
           Version: "2012-10-17"
@@ -74,6 +78,17 @@ Resources:
               Action:
                 - s3:ListBucket
               Resource: !Sub "arn:aws:s3:::${AppBucketName}"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamodbTableName
+  
+  DynoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey: 
+        Type: String
+        Name: domain
+      TableName: !Ref DynamodbTableName
+
   
 
 
