@@ -34,11 +34,12 @@ To use the SAM CLI, you need the following tools.
 
 
 
-To build and deploy your application for the first time, run the following in your shell:
+To build your application for the first time, run the following in your shell:
 
 ```bash
-sam build
-sam deploy --guided
+$ git clone https://github.com/theerakesh/lambda-web-crawler.git
+$ cd lambda-web-crawler/
+$ sam build
 ```
 
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts
@@ -46,22 +47,29 @@ The first command will build the source of your application. The second command 
 
 ## Use the SAM CLI to build and test locally
 
+### **Build**
+
 Build your application with the `sam build` command.
 
 ```bash
-web-crawler$ sam build
+lambda-web-crawler$ sam build
 ```
 
 The SAM CLI installs dependencies defined in `hello-world/package.json`, creates a deployment package, and saves it in the `.aws-sam/build` folder.
 
+### **Invoke/Test**
 Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
 
 Run functions locally and invoke them with the `sam local invoke` command.
 
 ```bash
-web-crawler$ sam local invoke WebCrawlerFunction --event events/event.json
+lambda-web-crawler$ sam local invoke WebCrawlerFunction --event events/event.json
 ```
 
+### **Deploy**
+```bash
+lambda-web-crawler$ sam deploy --guided
+```
 Once deployed you can use the step function to invoke the lambda as follows
 
 - first provide a Input as `event`
@@ -167,4 +175,12 @@ Once deployed you can use the step function to invoke the lambda as follows
    const phoneRegex = /(?<!\d)(\+ ?\d{1,2}[\s\u00A0]?)\(?\d{3}\)?[\s.-\u00A0]?\d{3}[\s.-\u00A0]?\d{4}(?!\d)/g
    // I had to use negative look-behind (?<!\d) and negative lookahead (?!\d) to stop matching any random 10 digit occurences
    ```
+6. Results found then are written to dynamodb table for faster access and then it returns the results
 
+## Todo
+- [x] Add dynamodb caching
+- [ ] Add `unit testing`
+- [ ] Using `AWS SQS` to do a recursive web-crawling
+- [ ] Automate deletion of data in `AWS S3` after a day or a specific period since web content may get stale
+- [ ] Imprement CI/CD in `github actions`
+- [ ] Add Typescript version
