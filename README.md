@@ -1,6 +1,6 @@
 # AWS-Lambda-web-crawler
 
-![template1-designer (1)](https://user-images.githubusercontent.com/90252765/170829231-2419dc52-b282-4daf-8a0d-1a1afdca21fd.png)
+![template1-designer (4)](https://user-images.githubusercontent.com/90252765/170829662-e5621e3a-49c2-44a3-953b-337ee6ea7f52.png)
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
