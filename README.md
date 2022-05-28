@@ -185,5 +185,5 @@ Once deployed you can use the step function to invoke the lambda as follows
 - [ ] Add `unit testing`
 - [ ] Using `AWS SQS` to do a recursive web-crawling
 - [ ] Automate deletion of data in `AWS S3` after a day or a specific period since web content may get stale
-- [ ] Imprement CI/CD in `github actions`
-- [ ] Add Typescript version
+- [ ] Implement CI/CD in `github actions`
+- [ ] Add Typescript support
